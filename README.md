@@ -11,34 +11,34 @@
 
 ## Deployments Example Project
 
-- deploy acm stack
+- deploy stack
 
 ```bash
-cdk deploy -c stack=acm
+# deploy ACM on us-east-1
+$ cdk deploy -c stack=acm
+# deploy CDN WAF on us-east-1
+$ cdk deploy -c stack=cdnwaf
+
+# deploy ACM on ap-northeast-1 for alb
+$ export CDK_ACM_SUBDOMAIN=alb. && cdk deploy -c stack=albacm
 ```
 
-- update the ACM Arn to cdk.json
+- before deploy example stack, update the Arn in cdk.json
 
 ```json
-  "ACMArn": "arn:aws:acm:us-east-1:XXXXXXXXXX:certificate/791c80de-7937-4b60-a21b-792129b0e4dc",
-```
-
-- deploy example stack
-
-```bash
-cdk deploy
-# or
-cdk deploy -c stack=example
+  "ALBACMArn": "arn:aws:acm:ap-northeast-1:796957138374:certificate/755453b2-b552-4ac5-b80b-c6360f37e537",
+  "CDNACMArn": "arn:aws:acm:us-east-1:796957138374:certificate/cbaeed36-8a60-4291-ac76-176c8c80a767",
+  "CDNWafArn": "arn:aws:wafv2:us-east-1:796957138374:global/webacl/CDNWAF-oPjY1pWbGlPC/a8186c28-f5c4-4984-9522-da91b9b0facf",
 ```
 
 - upload the static file to s3
 
 ```bash
 $ cd resources/s3
-$ aws s3 cp * s3://xxxxxxxxxxxxxxx
+$ aws s3 cp . s3://xxxxxxxxxxxxxxx --recursive
 ```
 
-- push docker image to ECR
+- push docker image to ECR (the codepiple with auto push on first time)
 
 ```bash
 $ cd resources/docker
@@ -52,16 +52,10 @@ $ docker push XXXXXXXXXXXXX.dkr.ecr.ap-northeast-1.amazonaws.com/XXXXXXXXXXXXX:l
 - clean up
 
 ```bash
-# get s3 bucket & delete it
-$ aws s3 ls
-$ aws s3 rb s3://cdk-example-frontendXXXXXXXXXXXX --force
-$ aws s3 rb s3://cdk-example-logginXXXXXXXXXXXX --force
-
-# get ecr repository name & delete it
-$ aws ecr describe-repositories
-$ aws ecr delete-repository --repository-name XXXXXXXXXXXX --force
+$ ./resources/clear.sh
 
 $ cdk destroy
+$ cdk destroy -c stack=cdnwaf
 $ cdk destroy -c stack=acm
 ```
 
@@ -71,6 +65,12 @@ $ cdk destroy -c stack=acm
 
 ```bash
 npm install -g aws-cdk
+```
+
+- update node package
+
+```bash
+npm update
 ```
 
 - install construct library (example)

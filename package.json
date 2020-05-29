@@ -1,6 +1,10 @@
 {
   "name": "example",
   "version": "0.1.0",
+  "repository": {
+    "url": "git@github.com:noahxp/infrastructure-as-code-cdk.git"
+  },
+  "license": "UNLICENSED",
   "bin": {
     "example": "bin/example.js"
   },
@@ -11,27 +15,32 @@
     "cdk": "cdk"
   },
   "devDependencies": {
-    "@aws-cdk/assert": "^1.42.0",
-    "@types/jest": "^25.2.1",
+    "@aws-cdk/assert": "^1.48.0",
+    "@types/jest": "^25.2.3",
     "@types/node": "10.17.5",
+    "aws-cdk": "^1.48.0",
     "jest": "^25.5.0",
     "ts-jest": "^25.3.1",
-    "aws-cdk": "^1.42.0",
-    "ts-node": "^8.1.0",
+    "ts-node": "^8.10.2",
     "typescript": "~3.7.2"
   },
   "dependencies": {
-    "@aws-cdk/aws-certificatemanager": "^1.42.0",
-    "@aws-cdk/aws-cloudfront": "^1.42.0",
-    "@aws-cdk/aws-ec2": "^1.42.0",
-    "@aws-cdk/aws-ecr": "^1.42.0",
-    "@aws-cdk/aws-ecs": "^1.42.0",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^1.42.0",
-    "@aws-cdk/aws-iam": "^1.42.0",
-    "@aws-cdk/aws-route53": "^1.42.0",
-    "@aws-cdk/aws-s3": "^1.42.0",
-    "@aws-cdk/aws-wafv2": "^1.42.0",
-    "@aws-cdk/core": "^1.42.0",
+    "@aws-cdk/aws-certificatemanager": "^1.48.0",
+    "@aws-cdk/aws-cloudfront": "^1.48.0",
+    "@aws-cdk/aws-codebuild": "^1.48.0",
+    "@aws-cdk/aws-codedeploy": "^1.48.0",
+    "@aws-cdk/aws-codepipeline": "^1.48.0",
+    "@aws-cdk/aws-codepipeline-actions": "^1.48.0",
+    "@aws-cdk/aws-ec2": "^1.48.0",
+    "@aws-cdk/aws-ecr": "^1.48.0",
+    "@aws-cdk/aws-ecs": "^1.48.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^1.48.0",
+    "@aws-cdk/aws-iam": "^1.48.0",
+    "@aws-cdk/aws-route53": "^1.48.0",
+    "@aws-cdk/aws-s3": "^1.48.0",
+    "@aws-cdk/aws-wafv2": "^1.48.0",
+    "@aws-cdk/core": "^1.48.0",
+    "@cloudcomponents/cdk-blue-green-container-deployment": "^1.0.16",
     "source-map-support": "^0.5.16"
   }
 }

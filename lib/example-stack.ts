@@ -10,13 +10,25 @@ import * as dnsTarget from '@aws-cdk/aws-route53-targets'
 import * as cloudfront from '@aws-cdk/aws-cloudfront'
 import * as ecr from '@aws-cdk/aws-ecr'
 import * as ecs from '@aws-cdk/aws-ecs'
-import * as wafv2 from '@aws-cdk/aws-wafv2'
+import * as codebuild from '@aws-cdk/aws-codebuild';
+import * as codepipeline from '@aws-cdk/aws-codepipeline';
+import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
+import * as codedeploy from '@aws-cdk/aws-codedeploy';
 import { Resources } from './interface'
+import {
+  BlueGreenService,
+  DummyTaskDefinition,
+  EcsDeploymentGroup,
+  PushImageProject,
+} from '@cloudcomponents/cdk-blue-green-container-deployment'
 
 export class ExampleStack extends cdk.Stack {
+  // readonly backendECR: ecr.Repository
+
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // environment variables
     const runtimeEnvironment: string = 'dev'
     const resources: Resources = this.node.tryGetContext(runtimeEnvironment)
 
@@ -25,15 +37,21 @@ export class ExampleStack extends cdk.Stack {
     const logLifecycle: number = resources.LogLifecycle
     const domainName: string = resources.DomainName
     const hostDomainName: string = resources.HostDomainName
-    const acmArn: string = resources.ACMArn
+    const albAcmArn: string = resources.ALBACMArn
+    const cdnAcmArn: string = resources.CDNACMArn
+    const cdnWafArn: string = resources.CDNWafArn
     const fargateCPU: number = resources.FargateCPU
     const fargateMemory: number = resources.FargateMemory
     const taskMaxCapacity: number = resources.TaskMaxCapacity
     const taskMinCapacity: number = resources.TaskMinCapacity
     const taskScheduleStart: number = resources.TaskScheduleStart
     const taskScheduleEnd: number = resources.TaskScheduleEnd
+    const githubTokenArn: string = resources.GithubTokenArn
 
     const isTaskScheduleByTime: boolean = false
+
+    const cdnToAlbHeaderValue: string = '2bareiic4bc';
+
 
 
     /***** networking *****/
@@ -139,6 +157,7 @@ export class ExampleStack extends cdk.Stack {
     // const host = new ec2.BastionHostLinux(this, 'BastionHost', { vpc });
 
 
+
     /**** application resources */
 
     // frontend , the static resources
@@ -155,15 +174,15 @@ export class ExampleStack extends cdk.Stack {
 
 
     // acm for ALB
-    const albACM = new acm.Certificate(this, 'ALBAcm', {
-      domainName: '*.' + hostDomainName,   // // aws.noah.tw
-      validationMethod: acm.ValidationMethod.DNS,
-    });
-    // DnsValidatedCertificate will automatic create a acm (ex: aws.noah.tw)
-    const certificate = new acm.DnsValidatedCertificate(this, 'ValidationCertificate', {
-      domainName: 'alb.' + hostDomainName,   // aws.noah.tw
-      hostedZone,
-    });
+    // const albACM = new acm.Certificate(this, 'ALBAcm', {
+    //   domainName: '*.' + hostDomainName,   // // aws.noah.tw
+    //   validationMethod: acm.ValidationMethod.DNS,
+    // });
+    // // DnsValidatedCertificate will automatic create a acm (ex: aws.noah.tw)
+    // const certificate = new acm.DnsValidatedCertificate(this, 'ValidationCertificate', {
+    //   domainName: 'alb.' + hostDomainName,   // aws.noah.tw
+    //   hostedZone,
+    // });
     // Application Load balancer
     const ALBSg = new ec2.SecurityGroup(this, 'ALBSg', { vpc: vpc })
     ALBSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), 'allow from anywhere')
@@ -183,19 +202,19 @@ export class ExampleStack extends cdk.Stack {
     const ALBListener = ALB.addListener('ALBListener', {
       protocol: elbv2.ApplicationProtocol.HTTPS,
       port: 443,
-      certificates: [albACM],
-      defaultTargetGroups: [
-        ALBTg1
+      certificates: [acm.Certificate.fromCertificateArn(this, 'ALBSSLCert', albAcmArn)],
+      // defaultTargetGroups: [
+      //   ALBTg1
+      // ],
+      defaultAction: elbv2.ListenerAction.fixedResponse(403)
+    })
+    ALBListener.addTargetGroups('TG1', {
+      priority: 1,
+      targetGroups: [ALBTg1],
+      conditions: [
+        elbv2.ListenerCondition.httpHeader('X-Header-CDN', [cdnToAlbHeaderValue])
       ],
     })
-    // const ALBListenerRule = new elbv2.ApplicationListenerRule(this, 'ALBListenerRule', {
-    //   listener: ALBListener,
-    //   priority: 1,
-    //   hostHeader: 'abc',
-    //   fixedResponse: {
-    //     statusCode: '202',
-    //   }
-    // })
     const albARecord = new dns.ARecord(this, 'ALBARecord', {
       zone: hostedZone,
       target: dns.RecordTarget.fromAlias(new dnsTarget.LoadBalancerTarget(ALB)),
@@ -204,79 +223,29 @@ export class ExampleStack extends cdk.Stack {
 
 
 
-    // WAF
-    const albWAF = new wafv2.CfnWebACL(this, 'ALBWAF' ,{
-      scope: 'REGIONAL',
-      defaultAction: {allow: {}},
-      rules: [
-        // TODO: custome policy ,
-        // {
-        //   priority: 1,
-        //   overrideAction: { none: {} },
-        //   visibilityConfig: {
-        //     sampledRequestsEnabled: true,
-        //     cloudWatchMetricsEnabled: true,
-        //     metricName: "WAF-Header"
-        //   },
-        //   name: "WAF-Header",
-        //   statement: {
-        //     notStatement: {
-        //       statement: {
-        //         byteMatchStatement: {
-        //           fieldToMatch: {
-        //             singleHeader: {
-        //               'Name': 'XHeader'
-        //             }
-        //           },
-        //           positionalConstraint: "CONTAINS",
-        //           searchString: "StringToMatch",
-        //           textTransformations: [
-        //             {
-        //               priority: 0,
-        //               type: 'NONE',
-        //             }
-        //           ]
-        //         },
-        //       },
-        //     }
-        //   }
-        // },
-        {
-          priority: 100,
-          overrideAction: { none: {} },
-          visibilityConfig: {
-            sampledRequestsEnabled: true,
-            cloudWatchMetricsEnabled: true,
-            metricName: "AWS-AWSManagedRulesPHPRuleSet"
-          },
-          name: "AWS-AWSManagedRulesPHPRuleSet",
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: "AWS",
-              name: "AWSManagedRulesPHPRuleSet"
-            }
-          }
-        },
-      ],
-      visibilityConfig: {
-        cloudWatchMetricsEnabled: true,
-        metricName: 'albWAF',
-        sampledRequestsEnabled: true,
-      }
-    })
-    new wafv2.CfnWebACLAssociation(this, 'ALBWAFAssociation', {
-      resourceArn: ALB.loadBalancerArn,
-      webAclArn: albWAF.attrArn
-    })
-
-
-
     // CDN
-    const globalCert = acm.Certificate.fromCertificateArn(this, 'GlobalCert', acmArn)
+    const cdnSSLCert = acm.Certificate.fromCertificateArn(this, 'CDNSSLCert', cdnAcmArn)
     const cdnOAI = new cloudfront.OriginAccessIdentity(this, 'CDNOAI', {
       comment: 'access-identity-' + frontendBucket.bucketName
     })
     const cdn = new cloudfront.CloudFrontWebDistribution(this, 'CDN', {
+      defaultRootObject: 'index.html',
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
+      viewerCertificate: cloudfront.ViewerCertificate.fromAcmCertificate(
+        cdnSSLCert,
+        {
+          aliases: [hostDomainName],  // aws.noah.tw
+          securityPolicy: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2018,
+          sslMethod: cloudfront.SSLMethod.SNI, // default
+        },
+      ),
+      loggingConfig: {
+        bucket: cdnLogBucket,
+        includeCookies: true,
+        prefix: 'CDNLogs'
+      },
+      comment: 'cdn for ' + hostDomainName,
+      webACLId: cdnWafArn,
       originConfigs: [
         {
           s3OriginSource: {
@@ -294,7 +263,7 @@ export class ExampleStack extends cdk.Stack {
               minTtl: cdk.Duration.minutes(0),
             }
           ],
-        },{
+        }, {
           customOriginSource: {
             // domainName: ALB.loadBalancerDnsName,
             domainName: albARecord.domainName,
@@ -304,10 +273,6 @@ export class ExampleStack extends cdk.Stack {
           },
           behaviors: [
             {
-              // TODO
-              // 1. Cache Based on Selected Request Headers
-              // 2. redirect apis 404 not found.
-              // 3. customer header
               pathPattern: '/apis/*',
               allowedMethods: cloudfront.CloudFrontAllowedMethods.ALL,
               defaultTtl: cdk.Duration.minutes(0),
@@ -317,29 +282,15 @@ export class ExampleStack extends cdk.Stack {
                 queryString: true,
                 cookies: {
                   forward: "all"
-                 },
-                // headers:
+                },
               },
             }
-          ]
-        }
-      ],
-      defaultRootObject: 'index.html',
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
-      viewerCertificate: cloudfront.ViewerCertificate.fromAcmCertificate(
-        globalCert,
-        {
-          aliases: [hostDomainName],
-          securityPolicy: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2018,
-          sslMethod: cloudfront.SSLMethod.SNI, // default
+          ],
+          originHeaders: {
+            'X-Header-CDN': cdnToAlbHeaderValue
+          }
         },
-      ),
-      loggingConfig: {
-        bucket: cdnLogBucket,
-        includeCookies: true,
-        prefix: "CDNLogs"
-      },
-      comment: "cdn for " + hostDomainName,
+      ],
     })
     const cdnARecord = new dns.ARecord(this, 'cdnARecord', {
       zone: hostedZone,
@@ -358,15 +309,20 @@ export class ExampleStack extends cdk.Stack {
     const ecsCluster = new ecs.Cluster(this, "EcsCluster", {
       vpc: vpc
     })
-
     const backendTaskDef = new ecs.FargateTaskDefinition(this, 'BackendTaskDef', {
       cpu: fargateCPU,
       memoryLimitMiB: fargateMemory,
     })
+    backendTaskDef.addToTaskRolePolicy(new iam.PolicyStatement({  // example for task role
+      resources: ['*'],
+      actions: ['s3:Get*']
+    }));
+
     const backendContainer = backendTaskDef.addContainer("BackendContainer", {
       image: ecs.ContainerImage.fromEcrRepository(backendECR, 'latest'),
       environment: {
         'ENV': runtimeEnvironment,
+        'ENV104': 'TEST-NEW',
         // 'spring.profiles.active': runtimeEnvironment,
       },
       startTimeout: cdk.Duration.minutes(5),
@@ -387,7 +343,12 @@ export class ExampleStack extends cdk.Stack {
       vpcSubnets: {
         // subnets: vpc.isolatedSubnets,  // have 6 subnets in this case.
         subnetGroupName: 'private1'
-      }
+      },
+      deploymentController: {
+        // TODO, cdk unspport the B/G Deployment
+        // type: ecs.DeploymentControllerType.CODE_DEPLOY,
+        type: ecs.DeploymentControllerType.ECS,
+      },
     })
     backendService.attachToApplicationTargetGroup(ALBTg1)
     const backendTaskScaling = backendService.autoScaleTaskCount({
@@ -414,8 +375,148 @@ export class ExampleStack extends cdk.Stack {
 
 
 
+    /***** CI-CD, Pipeline, the stags : Source,Build,Test,Deploy,Approval,Invoke ******/
+    const buildReportBucket = new s3.Bucket(this, 'BuildReportBucket', {
+      lifecycleRules: [{
+        expiration: cdk.Duration.days(logLifecycle),
+      }],
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+    const backendBuildReportGroup = new codebuild.ReportGroup(this, 'BackendBuildReportGroup', {
+      exportBucket: buildReportBucket
+    })
+    const backendBuildProject = new codebuild.PipelineProject(this, 'PipelineProject', {
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            'runtime-versions': {
+              docker: 18   // 2020-6-11, the last version of docker support on codebuild is 18
+            },
+            commands: [
+              'set -e',
+            ]
+          },
+          pre_build: {
+            commands: [
+              'TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}',
+              'LATEST="latest"',
+              'echo "TAG=$TAG, LATEST=$LATEST"',
+              'echo "Building image now"',
+              'echo "ECR login now"',
+              `aws ecr get-login-password --region ${cdk.Aws.REGION} | docker login --username AWS --password-stdin ${cdk.Aws.ACCOUNT_ID}.dkr.ecr.${cdk.Aws.REGION}.amazonaws.com`,
+              'echo "Generate imagedefinitions.json for EcsDeployAction"',
+              `echo "[{\\\"name\\\": \\\"${backendContainer.containerName}\\\",\\\"imageUri\\\": \\\"${backendECR.repositoryUri}:$TAG\\\"}]" > imagedefinitions.json`
+            ]
+          },
+          build: {
+            commands: [
+              'echo "Building image now"',
+              'cd ./resources/Docker',
+              `docker build -t ${backendECR.repositoryUri}:$LATEST .`,
+              `docker tag ${backendECR.repositoryUri}:$LATEST ${backendECR.repositoryUri}:$TAG`,
+              `echo "run test command and report to CodebuildReportGroup"`,
+              'mkdir -p build/reports',
+              // the more test code ,(this demo project no test code.)
+            ]
+          },
+          post_build: {
+            commands: [
+              'echo "Pushing to ECR now"',
+              `docker push ${backendECR.repositoryUri}:$TAG`,
+              `docker push ${backendECR.repositoryUri}:$LATEST`,
+            ]
+          },
+        },
+        // Report Result. (this demo project no test code.)
+        // reports: {
+        //   [backendBuildReportGroup.reportGroupArn]: {
+        //     files: '**/*',
+        //     'base-directory': 'build/reports',
+        //     "file-format": 'JunitXml'
+        //   },
+        // },
+        artifacts: {
+          files: [
+            'imagedefinitions.json'
+          ]
+        }
+      }),
+      environment: {
+        buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
+        privileged: true,
+      },
+    })
+    backendBuildProject.addToRolePolicy(new iam.PolicyStatement({
+      resources: ['*'],
+      actions: ['ecr:GetAuthorizationToken']
+    }));
+    backendBuildProject.addToRolePolicy(new iam.PolicyStatement({
+      resources: [`${backendECR.repositoryArn}*`],
+      actions: ['ecr:BatchCheckLayerAvailability', 'ecr:InitiateLayerUpload', 'ecr:UploadLayerPart', 'ecr:CompleteLayerUpload', 'ecr:PutImage']
+    }));
+    backendBuildProject.addToRolePolicy(new iam.PolicyStatement({
+      resources: [`${backendBuildReportGroup.reportGroupArn}`],
+      actions: ['codebuild:CreateReportGroup','codebuild:CreateReport','codebuild:UpdateReport','codebuild:BatchPutTestCases']
+    }));
 
 
+
+    // TODO, cdk unspport the B/G Deployment
+    // const codeDeployRole = new iam.Role(this, 'CodeDeployRole', {
+    //   assumedBy: new iam.ServicePrincipal('codedeploy.amazonaws.com'),
+    //   managedPolicies: [
+    //     ManagedPolicy.fromManagedPolicyArn(this, 'ManagedPolicyAWSCodeDeployRoleForECS', 'arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS'),
+    //   ],
+    // })
+    // const ecsDeploy = new codedeploy.EcsApplication(this, 'EcsDeploy')
+    // new codedeploy.CfnDeploymentGroup(this, 'ECSDeploymentGroup', {
+    //   applicationName: ecsDeploy.applicationName,
+    //   serviceRoleArn: codeDeployRole.roleArn,
+    // })
+
+
+
+    const sourceArtifact = new codepipeline.Artifact();
+    const buildArtifact = new codepipeline.Artifact();
+    const pipeline = new codepipeline.Pipeline(this, 'Pipeline', {
+      stages: [
+        {
+          stageName: 'Source',
+          actions: [
+            new codepipeline_actions.GitHubSourceAction({
+              actionName: 'GithubAction',
+              owner: 'noahxp',
+              repo: 'infrastructure-as-code-cdk',
+              oauthToken: cdk.SecretValue.secretsManager(githubTokenArn, { jsonField: 'GithubToken' }),
+              branch: 'master',
+              output: sourceArtifact,
+            }),
+          ]
+        },
+        {
+          stageName: 'Build',
+          actions: [
+            new codepipeline_actions.CodeBuildAction({
+              actionName: 'BackendBuildAction',
+              project: backendBuildProject,
+              input: sourceArtifact,
+              outputs: [buildArtifact]
+            }),
+          ],
+        },
+        {
+          stageName: 'Deploy',
+          actions: [
+            new codepipeline_actions.EcsDeployAction({
+              actionName: 'BackendBuildAction',
+              service: backendService,
+              input: buildArtifact,
+            }),
+          ],
+        },
+      ]
+    })
 
 
     /***** The share function *****/

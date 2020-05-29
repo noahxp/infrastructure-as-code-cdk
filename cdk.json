@@ -9,13 +9,16 @@
       "LogLifecycle": 3650,
       "DomainName": "noah.tw",
       "HostDomainName": "aws.noah.tw",
-      "ACMArn": "arn:aws:acm:us-east-1:796957138374:certificate/cbaeed36-8a60-4291-ac76-176c8c80a767",
+      "ALBACMArn": "arn:aws:acm:ap-northeast-1:796957138374:certificate/755453b2-b552-4ac5-b80b-c6360f37e537",
+      "CDNACMArn": "arn:aws:acm:us-east-1:796957138374:certificate/cbaeed36-8a60-4291-ac76-176c8c80a767",
+      "CDNWafArn": "arn:aws:wafv2:us-east-1:796957138374:global/webacl/CDNWAF-oPjY1pWbGlPC/a8186c28-f5c4-4984-9522-da91b9b0facf",
       "FargateCPU": 256,
       "FargateMemory": 512,
       "TaskMaxCapacity": 5,
       "TaskMinCapacity": 1,
       "TaskScheduleStart": 0,
-      "TaskScheduleEnd": 10
+      "TaskScheduleEnd": 10,
+      "GithubTokenArn": "arn:aws:secretsmanager:ap-northeast-1:796957138374:secret:token/github-FqYh4y"
     },
     "staging":{
       "VpcCidr": "172.16.0.0/16",
@@ -23,13 +26,16 @@
       "LogLifecycle": 3650,
       "DomainName": "",
       "HostDomainName": "",
-      "ACMArn": "",
+      "ALBACMArn": "",
+      "CDNACMArn": "",
+      "CDNWAFArn": "",
       "FargateCPU": 512,
       "FargateMemory": 1024,
       "TaskMaxCapacity": 10,
       "TaskMinCapacity": 1,
       "TaskScheduleStart": 0,
-      "TaskScheduleEnd": 10
+      "TaskScheduleEnd": 10,
+      "GithubTokenArn": ""
     }
   }
 }
