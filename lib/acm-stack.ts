@@ -14,6 +14,8 @@ export class ACMStack extends cdk.Stack {
     const domainName: string = resources.DomainName
     const hostDomainName: string = resources.HostDomainName
 
+    const domainPrefix: string = process.env.CDK_ACM_SUBDOMAIN?process.env.CDK_ACM_SUBDOMAIN:'';
+
     // const sslcert = new acm.Certificate(this, 'Sslcert', {
     //   domainName: '*.' + hostDomainName,
     //   // subjectAlternativeNames: ['*.' + domainName],
@@ -27,15 +29,16 @@ export class ACMStack extends cdk.Stack {
 
     // DnsValidatedCertificate will automatic create a acm (ex: aws.noah.tw)
     const certificate = new acm.DnsValidatedCertificate(this, 'ValidationCertificate', {
-      domainName: hostDomainName,  //aws.noah.tw
+      domainName: domainPrefix + hostDomainName,  //aws.noah.tw
       hostedZone,
     });
 
 
     new CfnOutput(this, 'ACM', {
-      exportName: 'acm-' + hostDomainName.replace (/\./gi,''),
+      exportName: 'acm-' + domainPrefix.replace (/\./gi,'') + hostDomainName.replace (/\./gi,''),
       // value: sslcert.certificateArn
       value: certificate.certificateArn
     })
+
   }
 }

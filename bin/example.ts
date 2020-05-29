@@ -3,31 +3,39 @@ import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
 import { ExampleStack } from '../lib/example-stack';
 import { ACMStack } from '../lib/acm-stack';
+import { CDNWafStack } from '../lib/cdnwaf-stack';
 
 
 const app = new cdk.App();
 
-const stackName: string = app.node.tryGetContext("stack")?app.node.tryGetContext("stack"):'example'
+const buildStack: string = app.node.tryGetContext("stack")?app.node.tryGetContext("stack"):'example'
+
 let env = {
   region: process.env.CDK_DEFAULT_REGION,
   account: process.env.CDK_DEFAULT_ACCOUNT
 }
-let acmEnv = {
-  region: 'us-east-1',
+let virginiaEnv = {
+  region: process.env.CDK_DEFAULT_REGION?process.env.CDK_DEFAULT_REGION:'us-east-1',
   account: process.env.CDK_DEFAULT_ACCOUNT
 }
 let stacks = {
-  'example': {'cdk': ExampleStack, 'cdkName': 'cdk-example'},
-  'acm': {'cdk': ACMStack, 'cdkName': 'acm-stack'},
+  'example': {'cdk': ExampleStack, 'cfnStackName': 'cdk-example'},
+  'acm': {'cdk': ACMStack, 'cfnStackName': 'acm-stack'},
+  'cdnwaf': {'cdk': CDNWafStack, 'cfnStackName': 'cdnwaf-stack'},
 }
 
 
-if (stackName === 'acm'){
-  env = acmEnv
+// if (buildStack === 'acm' || buildStack === 'cdnwaf'){
+if (buildStack === 'acm' || buildStack === 'cdnwaf'){
+  env = virginiaEnv
 }
 
 // new ExampleStack(app, stackName, {env: env});
-new (<any>stacks)[stackName].cdk(app, (<any>stacks)[stackName].cdkName, { env })
+const stack = new (<any>stacks)[buildStack].cdk(app, (<any>stacks)[buildStack].cfnStackName, { env })
+if (buildStack === 'example'){
+  // stack.templateOptions.transforms = ['AWS::CodeDeployBlueGreen']
+}
+
 
 /*
 cli :
