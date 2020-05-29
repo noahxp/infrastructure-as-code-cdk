@@ -1,0 +1,28 @@
+<html>
+<head>
+<script>
+window.onload = function (){
+  console.log('do window.onload...');
+  var xhr = new XMLHttpRequest();
+  xhr.open('get','/apis/demo.php')
+  xhr.onload = function (){
+    if (xhr.status === 200){
+      var ret = JSON.parse(xhr.responseText);
+      document.getElementById('data').innerHTML = ret.now;
+    }else{
+      document.getElementById('data').innerHTML = "ajax failure.";
+    }
+  }
+  xhr.send();
+
+}
+</script>
+</head>
+<body>
+<h1 style="text-align: center">This page saving on AWS S3.</h1>
+<p style="text-align: center; color: #ff0000;">this is a static file .</p>
+<hr>
+<h2 style="text-align: center">From backend data &lt;/apis&gt; : </h2>
+<div id="data" style="text-align: center; color: #ff0000;"></div>
+</body>
+</html>

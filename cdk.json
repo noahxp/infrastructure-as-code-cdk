@@ -1,0 +1,35 @@
+{
+  "app": "npx ts-node bin/example.ts",
+  "context": {
+    "@aws-cdk/core:enableStackNameDuplicates": "true",
+    "aws-cdk:enableDiffNoFail": "true",
+    "dev":{
+      "VpcCidr": "172.16.0.0/16",
+      "NatGateways": 1,
+      "LogLifecycle": 3650,
+      "DomainName": "noah.tw",
+      "HostDomainName": "aws.noah.tw",
+      "ACMArn": "arn:aws:acm:us-east-1:796957138374:certificate/cbaeed36-8a60-4291-ac76-176c8c80a767",
+      "FargateCPU": 256,
+      "FargateMemory": 512,
+      "TaskMaxCapacity": 5,
+      "TaskMinCapacity": 1,
+      "TaskScheduleStart": 0,
+      "TaskScheduleEnd": 10
+    },
+    "staging":{
+      "VpcCidr": "172.16.0.0/16",
+      "NatGateways": 1,
+      "LogLifecycle": 3650,
+      "DomainName": "",
+      "HostDomainName": "",
+      "ACMArn": "",
+      "FargateCPU": 512,
+      "FargateMemory": 1024,
+      "TaskMaxCapacity": 10,
+      "TaskMinCapacity": 1,
+      "TaskScheduleStart": 0,
+      "TaskScheduleEnd": 10
+    }
+  }
+}
