@@ -15,12 +15,12 @@ import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
 import * as codedeploy from '@aws-cdk/aws-codedeploy';
 import { Resources } from './interface'
-import {
-  BlueGreenService,
-  DummyTaskDefinition,
-  EcsDeploymentGroup,
-  PushImageProject,
-} from '@cloudcomponents/cdk-blue-green-container-deployment'
+// import {
+//   BlueGreenService,
+//   DummyTaskDefinition,
+//   EcsDeploymentGroup,
+//   PushImageProject,
+// } from '@cloudcomponents/cdk-blue-green-container-deployment'
 
 export class ExampleStack extends cdk.Stack {
   // readonly backendECR: ecr.Repository
