@@ -322,7 +322,6 @@ export class ExampleStack extends cdk.Stack {
       image: ecs.ContainerImage.fromEcrRepository(backendECR, 'latest'),
       environment: {
         'ENV': runtimeEnvironment,
-        'ENV104': 'TEST-NEW',
         // 'spring.profiles.active': runtimeEnvironment,
       },
       startTimeout: cdk.Duration.minutes(5),
@@ -402,7 +401,6 @@ export class ExampleStack extends cdk.Stack {
               'TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}',
               'LATEST="latest"',
               'echo "TAG=$TAG, LATEST=$LATEST"',
-              'echo "Building image now"',
               'echo "ECR login now"',
               `aws ecr get-login-password --region ${cdk.Aws.REGION} | docker login --username AWS --password-stdin ${cdk.Aws.ACCOUNT_ID}.dkr.ecr.${cdk.Aws.REGION}.amazonaws.com`,
               'echo "Generate imagedefinitions.json for EcsDeployAction"',
@@ -509,7 +507,7 @@ export class ExampleStack extends cdk.Stack {
           stageName: 'Deploy',
           actions: [
             new codepipeline_actions.EcsDeployAction({
-              actionName: 'BackendBuildAction',
+              actionName: 'BackendDeployAction',
               service: backendService,
               input: buildArtifact,
             }),
